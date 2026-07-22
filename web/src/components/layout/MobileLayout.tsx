@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TabBar, Empty, SpinLoading } from 'antd-mobile';
+import { TabBar, SpinLoading } from 'antd-mobile';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   UnorderedListOutline,

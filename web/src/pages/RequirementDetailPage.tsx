@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
 import {
   Card, Descriptions, Tag, Button, Space, Drawer, Form, Select, Input, DatePicker, InputNumber, Spin,
-  Tabs, List, Empty, message, Modal, Result,
+  Tabs, List, Empty, message,
 } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeftOutlined, EditOutlined, DownloadOutlined, CommentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { getDemand, patchDemand, addComment, getAssignableUsers, getExportUrl } from '@/api/requirements';
+import { getDemand, patchDemand, addComment, getAssignableUsers, getExportUrl, type DemandPatch } from '@/api/requirements';
 import { useDeviceType } from '@/hooks/useDeviceType';
 import {
-  STATUS_OPTIONS, PRIORITY_OPTIONS, TYPE_OPTIONS, SOURCE_OPTIONS,
-  type Demand, type DemandPatch, type Comment,
+  STATUS_OPTIONS, PRIORITY_OPTIONS, TYPE_OPTIONS,
+  type Demand,
 } from '@/types/demand';
 import { fmtTime } from '@/utils/time';
-import RichEditor from '@/components/common/RichEditor';
 
 const TYPE_LABELS = Object.fromEntries(TYPE_OPTIONS.map((t) => [t.value, t.label]));
 const STATUS_LABELS = Object.fromEntries(STATUS_OPTIONS.map((s) => [s.value, s.label]));

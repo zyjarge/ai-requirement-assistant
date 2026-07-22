@@ -3,7 +3,7 @@ import { Form, Input, Select, DatePicker, InputNumber, Button, Card, message, Sp
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { createDemand } from '@/api/requirements';
-import { STATUS_OPTIONS, PRIORITY_OPTIONS, TYPE_OPTIONS, type Demand, type RequirementType, type Priority } from '@/types/demand';
+import { PRIORITY_OPTIONS, TYPE_OPTIONS, type Demand } from '@/types/demand';
 
 export default function NewRequirementPage() {
   const navigate = useNavigate();

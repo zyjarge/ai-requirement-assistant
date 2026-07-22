@@ -74,13 +74,29 @@ public class AdminAuthFilter extends OncePerRequestFilter {
         // 命中：把 SessionInfo 放进 request，handle 用
         req.setAttribute(ATTR_SESSION, session.get());
 
-        // /admin 与 /admin/ 规整为 /admin/index.html 走静态资源
+        // 旧版后台：/admin 与 /admin/ 规整为 /admin/index.html 走静态资源
         if (path.equals("/admin") || path.equals("/admin/")) {
             req.getRequestDispatcher("/admin/index.html").forward(req, resp);
             return;
         }
 
+        // 新版 React SPA：/admin/app/** 未匹配具体资源时 fallback 到 /admin/app/index.html
+        // 但有后缀的静态资源 (js/css/png/...) 走 chain 让 Spring 静态资源处理器接管
+        if (path.startsWith("/admin/app/") && !hasFileExtension(path)) {
+            req.getRequestDispatcher("/admin/app/index.html").forward(req, resp);
+            return;
+        }
+
         chain.doFilter(req, resp);
+    }
+
+    /**
+     * 判断 path 是否包含文件后缀（以 . 开头且不是 /admin/app/ 本身）
+     */
+    private boolean hasFileExtension(String path) {
+        int lastSlash = path.lastIndexOf('/');
+        String lastSegment = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+        return lastSegment.contains(".");
     }
 
     /**
