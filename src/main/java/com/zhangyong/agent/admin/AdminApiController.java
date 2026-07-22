@@ -26,11 +26,15 @@ import java.util.*;
  *
  * 端点：
  *   GET    /admin/api/requirements                分页列表
+ *   POST   /admin/api/requirements                新建需求
+ *   GET    /admin/api/requirements/export         批量 CSV 导出
  *   GET    /admin/api/requirements/{id}           详情
  *   PATCH  /admin/api/requirements/{id}           编辑字段
  *   POST   /admin/api/requirements/{id}/comments  加评论
  *   GET    /admin/api/assignable-users            企微成员
- *   GET    /admin/api/requirements/{id}/export    CSV 导出
+ *   GET    /admin/api/requirements/{id}/export    CSV 导出（单条）
+ *
+ * 统计接口见 StatsController
  */
 @Slf4j
 @RestController
@@ -340,6 +344,100 @@ public class AdminApiController {
         }
         m.put("audit", audit);
         return m;
+    }
+
+    /**
+     * 新建需求
+     */
+    @PostMapping("/requirements")
+    @Transactional
+    public ResponseEntity<?> create(@RequestBody Map<String, Object> body, HttpServletRequest req) {
+        Demand d = new Demand();
+        Object attr = req.getAttribute(AdminAuthFilter.ATTR_SESSION);
+        if (attr instanceof AdminSessionService.SessionInfo s) {
+            d.setUserId(s.userId());
+        } else {
+            d.setUserId("anonymous");
+        }
+        d.setSource("web");
+        d.setStructured(false);
+        d.setStatus(asString(body.getOrDefault("status", "SUBMITTED")));
+        d.setTitle(asString(body.get("title")));
+        d.setRawInput(asString(body.get("rawInput")));
+        d.setRequirementType(asString(body.get("type")));
+        d.setPriority(asString(body.get("priority")));
+        d.setBusinessContext(asString(body.get("businessContext")));
+        d.setUserRole(asString(body.get("userRole")));
+        d.setAcceptanceCriteria(asString(body.get("acceptanceCriteria")));
+        d.setNotes(asString(body.get("notes")));
+        d.setSprintVersion(asString(body.get("sprintVersion")));
+        d.setAssigneeUserId(asString(body.get("assigneeUserId")));
+        d.setDepartment(asString(body.get("department")));
+
+        Object hours = body.get("estimatedHours");
+        if (hours instanceof Number) d.setEstimatedHours(((Number) hours).doubleValue());
+
+        String deadline = asString(body.get("deadline"));
+        if (deadline != null && !deadline.isEmpty()) {
+            try { d.setDeadline(LocalDate.parse(deadline)); } catch (Exception ignored) {}
+        }
+
+        Demand saved = demandRepository.save(d);
+        return ResponseEntity.ok(toSummary(saved));
+    }
+
+    /**
+     * 批量导出为 CSV
+     */
+    @GetMapping(value = "/requirements/export", produces = "text/csv;charset=UTF-8")
+    public ResponseEntity<?> exportAll(
+        @RequestParam(required = false) String q,
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String priority,
+        @RequestParam(required = false) String type
+    ) {
+        Specification<Demand> spec = (root, query, cb) -> {
+            List<Predicate> ps = new ArrayList<>();
+            if (q != null && !q.isBlank()) {
+                String like = "%" + q.trim() + "%";
+                ps.add(cb.or(cb.like(root.get("title"), like), cb.like(root.get("rawInput"), like)));
+            }
+            if (status != null && !status.isBlank()) ps.add(cb.equal(root.get("status"), status));
+            if (priority != null && !priority.isBlank()) ps.add(cb.equal(root.get("priority"), priority));
+            if (type != null && !type.isBlank()) ps.add(cb.equal(root.get("requirementType"), type));
+            return cb.and(ps.toArray(new Predicate[0]));
+        };
+        List<Demand> list = demandRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
+        if (list.isEmpty()) {
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"requirements-empty.csv\"")
+                .body("id,title,status,priority,created_at\n".getBytes());
+        }
+        List<String[]> rows = new ArrayList<>();
+        rows.add(new String[]{"id","user_id","department","type","title","priority","status",
+            "assignee_user_id","sprint_version","created_at"});
+        for (Demand d : list) {
+            rows.add(new String[]{
+                String.valueOf(d.getId()),
+                n(d.getUserId()), n(d.getDepartment()),
+                n(d.getRequirementType()), n(d.getTitle()),
+                n(d.getPriority()), n(d.getStatus()),
+                n(d.getAssigneeUserId()), n(d.getSprintVersion()),
+                d.getCreatedAt() == null ? "" : d.getCreatedAt().toString(),
+            });
+        }
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ExportUtil.writeCsv(rows, baos);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("text/csv;charset=UTF-8"));
+            headers.set(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"requirements-" + System.currentTimeMillis() + ".csv\"");
+            return new ResponseEntity<>(baos.toByteArray(), headers, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("export all failed", e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "export_failed"));
+        }
     }
 
     private static String n(String s) { return s == null ? "" : s; }
