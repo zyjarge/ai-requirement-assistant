@@ -92,14 +92,15 @@ public class AdminAuthFilter extends OncePerRequestFilter {
         req.setAttribute(ATTR_SESSION, session.get());
 
         // /admin 与 /admin/ 转发到 React SPA 入口（新版管理端）
-        if (path.equals("/admin") || path.equals("/admin/")) {
+        if (path.equals("/admin") || path.equals("/admin/")
+            || path.equals("/admin/app") || path.equals("/admin/app/")) {
             req.getRequestDispatcher("/admin/app/index.html").forward(req, resp);
             return;
         }
 
         // /admin/app/** 未匹配具体资源时 fallback 到 /admin/app/index.html (SPA 路由)
         // 但有后缀的静态资源 (.js/.css/.png/...) 走 chain 让 Spring 静态资源处理器接管
-        if (path.startsWith("/admin/app/") && !hasFileExtension(path)) {
+        if ((path.equals("/admin/app") || path.startsWith("/admin/app/")) && !hasFileExtension(path)) {
             req.getRequestDispatcher("/admin/app/index.html").forward(req, resp);
             return;
         }
