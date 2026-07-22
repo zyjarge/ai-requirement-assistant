@@ -59,6 +59,20 @@ public class AdminAuthFilter extends OncePerRequestFilter {
             chain.doFilter(req, resp);
             return;
         }
+
+        // 为 React SPA 添加 CSP，限制外边脚本加载
+        // 避免 Cloudflare 边缘自动注入的 beacon 脚本（type="module"，外部域名）
+        // 打断企信内置浏览器的 HTML 解析
+        if (path.equals("/admin") || path.equals("/admin/")
+            || path.startsWith("/admin/app/")) {
+            resp.setHeader("Content-Security-Policy",
+                "default-src 'self'; " +
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                "style-src 'self' 'unsafe-inline'; " +
+                "img-src 'self' data: https:; " +
+                "font-src 'self' data:; " +
+                "connect-src 'self' https://qyapi.weixin.qq.com;");
+        }
         if (ALLOW_LIST.contains(path)) {
             chain.doFilter(req, resp);
             return;
