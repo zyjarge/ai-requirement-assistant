@@ -1,5 +1,5 @@
 import client from './client';
-import type { Demand, DemandListItem, DemandListParams, PagedResult, QAItem, Comment } from '@/types/demand';
+import type { Demand, DemandListItem, DemandListParams, PagedResult, Comment } from '@/types/demand';
 
 // 列表
 export async function listDemands(params: DemandListParams): Promise<PagedResult<DemandListItem>> {

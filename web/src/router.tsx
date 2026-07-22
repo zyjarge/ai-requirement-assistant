@@ -18,4 +18,6 @@ export const router = createBrowserRouter([
       { path: '*', element: <Navigate to="/requirements" replace /> },
     ],
   },
-]);
+], {
+  basename: '/admin/app',
+});
