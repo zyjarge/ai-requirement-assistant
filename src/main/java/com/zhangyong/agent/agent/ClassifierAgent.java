@@ -2,22 +2,16 @@ package com.zhangyong.agent.agent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.zhangyong.agent.config.LlmProperties;
+import com.zhangyong.agent.llm.LlmService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
- * 需求分类 Agent - 调用 MiniMax（Anthropic Messages API 兼容模式）
+ * 需求分类 Agent
  */
 @Slf4j
 @Component
@@ -38,14 +32,13 @@ public class ClassifierAgent {
         {"type": "<类型>", "confidence": <0-1数字>, "reason": "<一句话理由>"}
         """;
 
-    private final LlmProperties llmProperties;
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final LlmService llmService;
+    private final ObjectMapper objectMapper;
 
     public Map<String, Object> classify(String userInput) {
         log.info("[ClassifierAgent] 分类: {}", userInput);
         try {
-            String content = callLlm(SYSTEM_PROMPT, userInput);
+            String content = llmService.chat(SYSTEM_PROMPT, userInput, 200);
             return parseJson(content);
         } catch (Exception e) {
             log.error("分类失败", e);
@@ -55,27 +48,6 @@ public class ClassifierAgent {
             fallback.put("reason", "分类失败: " + e.getMessage());
             return fallback;
         }
-    }
-
-    private String callLlm(String systemPrompt, String userPrompt) throws Exception {
-        String url = llmProperties.getBaseUrl() + llmProperties.getEndpointPath();
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("model", llmProperties.getModelName());
-        body.put("max_tokens", 200);
-        body.put("system", systemPrompt);
-        body.put("messages", List.of(Map.of("role", "user", "content", userPrompt)));
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("x-api-key", llmProperties.getApiKey());
-        headers.set("anthropic-version", "2023-06-01");
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-        ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-
-        JsonNode root = objectMapper.readTree(response.getBody());
-        return root.path("content").get(0).path("text").asText();
     }
 
     private Map<String, Object> parseJson(String content) {

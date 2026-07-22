@@ -2,19 +2,13 @@ package com.zhangyong.agent.agent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.zhangyong.agent.config.LlmProperties;
+import com.zhangyong.agent.llm.LlmService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 追问 Agent - 每次只生成 1 个最关键问题
@@ -41,9 +35,8 @@ public class QuestionerAgent {
         {"question": "<单个问题>"}
         """;
 
-    private final LlmProperties llmProperties;
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final LlmService llmService;
+    private final ObjectMapper objectMapper;
 
     /**
      * 生成单个问题（不是列表）
@@ -52,7 +45,7 @@ public class QuestionerAgent {
         log.info("[QuestionerAgent] type={}", requirementType);
         try {
             String userPrompt = String.format("需求类型：%s\n用户需求：%s\n请只问 1 个最关键的问题。", requirementType, userInput);
-            String content = callLlm(SYSTEM_PROMPT, userPrompt);
+            String content = llmService.chat(SYSTEM_PROMPT, userPrompt, 200);
             return parseQuestion(content, requirementType);
         } catch (Exception e) {
             log.error("生成追问失败", e);
@@ -93,26 +86,6 @@ public class QuestionerAgent {
             log.warn("解析单个问题失败: {}", e.getMessage());
         }
         return getFallbackQuestions(type)[0];
-    }
-
-    private String callLlm(String systemPrompt, String userPrompt) throws Exception {
-        String url = llmProperties.getBaseUrl() + llmProperties.getEndpointPath();
-
-        Map<String, Object> body = Map.of(
-            "model", llmProperties.getModelName(),
-            "max_tokens", 200,
-            "system", systemPrompt,
-            "messages", List.of(Map.of("role", "user", "content", userPrompt))
-        );
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("x-api-key", llmProperties.getApiKey());
-        headers.set("anthropic-version", "2023-06-01");
-
-        ResponseEntity<String> resp = restTemplate.postForEntity(url, new HttpEntity<>(body, headers), String.class);
-        JsonNode root = objectMapper.readTree(resp.getBody());
-        return root.path("content").get(0).path("text").asText();
     }
 
     private String[] getFallbackQuestions(String type) {
