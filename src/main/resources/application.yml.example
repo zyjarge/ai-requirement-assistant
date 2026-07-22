@@ -1,0 +1,90 @@
+spring:
+  application:
+    name: ai-requirement-assistant
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:default}
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_DB:ai_req}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:please_change_me}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: false
+    show-sql: false
+    open-in-view: false
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 3000ms
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+server:
+  port: 9080
+  address: 0.0.0.0
+  servlet:
+    context-path: /
+  tomcat:
+    threads:
+      max: 100
+    accept-count: 200
+
+# ============ 企业微信配置 ============
+wecom:
+  corp-id: ${WECOM_CORP_ID:your_corp_id}
+  agent-id: ${WECOM_AGENT_ID:your_agent_id}
+  secret: ${WECOM_SECRET:your_app_secret}
+  token: ${WECOM_TOKEN:your_callback_token}
+  encoding-aes-key: ${WECOM_ENCODING_AES_KEY:your_43_char_encoding_aes_key}
+  callback-path: /wecom/callback
+  test-users:
+    - ${WECOM_TEST_USER_1:zhangsan}
+    - ${WECOM_TEST_USER_2:lisi}
+
+# ============ LLM (MiniMax / Anthropic API) 配置 ============
+agentscope:
+  agent:
+    enabled: true
+  model:
+    provider: anthropic
+  anthropic:
+    api-key: ${LLM_API_KEY:your_llm_api_key}
+    model-name: ${LLM_MODEL_NAME:MiniMax-M3}
+    base-url: ${LLM_BASE_URL:https://api.minimaxi.com}
+    endpoint-path: ${LLM_ENDPOINT_PATH:/anthropic/v1/messages}
+    stream: false
+    max-tokens: ${LLM_MAX_TOKENS:1000}
+
+# ============ 应用日志 ============
+logging:
+  level:
+    root: INFO
+    com.zhangyong.agent: DEBUG
+    io.agentscope: INFO
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# ============ 自定义业务配置 ============
+app:
+  wecom:
+    enabled: true
+  agent:
+    max-rounds: 2
+    questions-per-round: 3
+  storage:
+    archive-enabled: true
+  admin:
+    session-ttl-hours: 24
+    oauth:
+      redirect-base: https://wecom.zhang-yong.site

@@ -1,0 +1,12 @@
+target/
+*.jar
+*.log
+.DS_Store
+.env
+
+# 敏感配置——不要提交真实的 application.yml
+# 请复制 application.yml.example 为 application.yml 并填入真实值
+application.yml
+
+# 企业微信域名验证文件（每个环境不同）
+WW_verify_*.txt
