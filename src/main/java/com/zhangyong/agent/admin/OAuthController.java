@@ -46,7 +46,17 @@ public class OAuthController {
 
     @GetMapping("/login")
     public void login(@RequestParam(value = "redirect", defaultValue = "/admin/") String redirect,
+                      HttpServletRequest req,
                       HttpServletResponse resp) throws IOException {
+        // 外部浏览器（非企信内）→ 跳到扫码中转页
+        if (!isWxworkUA(req)) {
+            String helperUrl = "/admin/oauth/browser-helper?redirect=" + URLEncoder.encode(redirect, StandardCharsets.UTF_8);
+            resp.setStatus(HttpStatus.FOUND.value());
+            resp.setHeader("Location", helperUrl);
+            return;
+        }
+
+        // 企信内浏览器 → 走 OAuth 自动授权
         String state = randomState();
         String callback = redirectBase + "/admin/oauth/callback";
         String url = oauthClient.buildAuthorizeUrl(callback, state);
@@ -137,8 +147,23 @@ public class OAuthController {
         clear.setPath("/");
         clear.setMaxAge(0);
         resp.addCookie(clear);
-        resp.setStatus(HttpStatus.FOUND.value());
-        resp.setHeader("Location", "/admin/oauth/login");
+
+        // 外部浏览器 → 跳到扫码中转页；企信内 → 走 OAuth 登录
+        if (isWxworkUA(req)) {
+            resp.setStatus(HttpStatus.FOUND.value());
+            resp.setHeader("Location", "/admin/oauth/login");
+        } else {
+            resp.setStatus(HttpStatus.FOUND.value());
+            resp.setHeader("Location", "/admin/oauth/browser-helper");
+        }
+    }
+
+    /**
+     * 判断是否在企信内嵌浏览器中
+     */
+    private boolean isWxworkUA(HttpServletRequest req) {
+        String ua = req.getHeader("User-Agent");
+        return ua != null && (ua.contains("wxwork") || ua.contains("MicroMessenger"));
     }
 
     @GetMapping("/me")
