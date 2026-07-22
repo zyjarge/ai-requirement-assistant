@@ -4,10 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>AI 需求管理</title>
-    <script type="module" crossorigin src="/admin/app/assets/index-DEsjaUlh.js"></script>
+    <script defer crossorigin src="/admin/app/assets/index-DEsjaUlh.js"></script>
     <link rel="stylesheet" crossorigin href="/admin/app/assets/index-CxHvGdF9.css">
   </head>
   <body>
     <div id="root"></div>
+    <!-- 脚本在 <body> 末尾加载，避免在 <head> 中执行时 getElementById('root') 返回 null -->
   </body>
 </html>
