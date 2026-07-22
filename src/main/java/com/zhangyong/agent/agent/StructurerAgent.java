@@ -2,22 +2,16 @@ package com.zhangyong.agent.agent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.zhangyong.agent.config.LlmProperties;
+import com.zhangyong.agent.llm.LlmService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
-import java.util.Map;
 
 /**
- * 结构化输出 Agent - 调用 MiniMax（Anthropic Messages API 兼容模式）
+ * 结构化输出 Agent
  */
 @Slf4j
 @Component
@@ -37,9 +31,8 @@ public class StructurerAgent {
         }
         """;
 
-    private final LlmProperties llmProperties;
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final LlmService llmService;
+    private final ObjectMapper objectMapper;
 
     public StructuredDemand structure(String requirementType, String rawInput,
                                       List<String> questions, List<String> answers) {
@@ -57,7 +50,7 @@ public class StructurerAgent {
                 %s
                 """, requirementType, rawInput, qa);
 
-            String content = callLlm(SYSTEM_PROMPT, userPrompt);
+            String content = llmService.chat(SYSTEM_PROMPT, userPrompt, 500);
             return parseJson(content, rawInput);
         } catch (Exception e) {
             log.error("结构化失败", e);
@@ -69,26 +62,6 @@ public class StructurerAgent {
             fallback.priority = "P1";
             return fallback;
         }
-    }
-
-    private String callLlm(String systemPrompt, String userPrompt) throws Exception {
-        String url = llmProperties.getBaseUrl() + llmProperties.getEndpointPath();
-
-        Map<String, Object> body = Map.of(
-            "model", llmProperties.getModelName(),
-            "max_tokens", 500,
-            "system", systemPrompt,
-            "messages", List.of(Map.of("role", "user", "content", userPrompt))
-        );
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("x-api-key", llmProperties.getApiKey());
-        headers.set("anthropic-version", "2023-06-01");
-
-        ResponseEntity<String> resp = restTemplate.postForEntity(url, new HttpEntity<>(body, headers), String.class);
-        JsonNode root = objectMapper.readTree(resp.getBody());
-        return root.path("content").get(0).path("text").asText();
     }
 
     private StructuredDemand parseJson(String content, String rawInput) throws Exception {
