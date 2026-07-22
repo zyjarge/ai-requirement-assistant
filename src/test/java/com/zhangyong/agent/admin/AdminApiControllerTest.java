@@ -66,7 +66,7 @@ class AdminApiControllerTest {
         Page<Demand> page = new PageImpl<>(List.of(sampleDemand()));
         when(demandRepo.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
 
-        Map<String, Object> out = controller.list(0, 20, null, null, null, null, null, "created_at", "desc");
+        Map<String, Object> out = controller.list(0, 20, null, null, null, null, null, null, null, null, "created_at", "desc");
 
         assertEquals(1L, out.get("total"));
         assertEquals(20, out.get("size"));

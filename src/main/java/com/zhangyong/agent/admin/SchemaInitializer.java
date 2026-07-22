@@ -9,17 +9,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * 启动时检查并创建管理端需要的 schema：
- *   - demand 表加 assignee_user_id 列
- *   - demand 表加 notes 列
- *   - demand_comment 新表
- *   - demand_audit_log 新表
- *
- * 全部幂等，重启不会破坏数据。
+ * 启动时检查并创建管理端需要的 schema，全部幂等。
  */
 @Slf4j
 @Component
-@Order(0)  // 在 JPA 启动后跑，确保 INFORMATION_SCHEMA 稳定
+@Order(0)
 @RequiredArgsConstructor
 public class SchemaInitializer {
 
@@ -27,8 +21,23 @@ public class SchemaInitializer {
 
     @EventListener(ApplicationReadyEvent.class)
     public void migrate() {
+        // === demand 表新维度字段 ===
+        addColumnIfMissing("demand", "department", "VARCHAR(128) NULL");
+        addColumnIfMissing("demand", "source", "VARCHAR(32) NOT NULL DEFAULT 'wecom'");
+        addColumnIfMissing("demand", "category_tags", "TEXT NULL");
+        addColumnIfMissing("demand", "estimated_hours", "DECIMAL(8,1) NULL");
+        addColumnIfMissing("demand", "deadline", "DATE NULL");
+        addColumnIfMissing("demand", "sprint_version", "VARCHAR(64) NULL");
+        addColumnIfMissing("demand", "related_demand_ids", "VARCHAR(256) NULL");
+        addColumnIfMissing("demand", "attachments", "TEXT NULL");
+        addColumnIfMissing("demand", "closed_at", "DATETIME(3) NULL");
+        addColumnIfMissing("demand", "feedback_rating", "TINYINT NULL");
+
+        // === demand 表原有管理字段 ===
         addColumnIfMissing("demand", "assignee_user_id", "VARCHAR(64) NULL");
         addColumnIfMissing("demand", "notes", "TEXT NULL");
+
+        // === 评论表 ===
         createTableIfMissing("demand_comment", """
             CREATE TABLE demand_comment (
               id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -40,6 +49,8 @@ public class SchemaInitializer {
               KEY idx_demand_id_created (demand_id, created_at DESC)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """);
+
+        // === 审计日志表 ===
         createTableIfMissing("demand_audit_log", """
             CREATE TABLE demand_audit_log (
               id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -53,7 +64,8 @@ public class SchemaInitializer {
               KEY idx_demand_id_created (demand_id, created_at DESC)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """);
-        log.info("SchemaInitializer: admin schema ready");
+
+        log.info("SchemaInitializer: all schema ready");
     }
 
     private void addColumnIfMissing(String table, String column, String ddl) {
