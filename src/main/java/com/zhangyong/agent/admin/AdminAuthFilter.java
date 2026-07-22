@@ -72,6 +72,9 @@ public class AdminAuthFilter extends OncePerRequestFilter {
                 "img-src 'self' data: https:; " +
                 "font-src 'self' data:; " +
                 "connect-src 'self' https://qyapi.weixin.qq.com;");
+            // 告诉 Cloudflare 不要修改响应，避免被注入 beacon 脚本
+            // （CF 默认会插入 Cloudflare Insights 脚本，可能导致企信内核解析失败）
+            resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, no-transform");
         }
         if (ALLOW_LIST.contains(path)) {
             chain.doFilter(req, resp);
